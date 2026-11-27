@@ -1,0 +1,10 @@
+/dist/
+/.local/
+*.db
+*.sqlite
+*.key
+*.pem
+*.pcap
+*.pcapng
+*.etl
+__pycache__/

@@ -31,4 +31,10 @@ Include the application version, Windows build, client channel, reproduction ste
 
 ## Credits
 
-Thanks to Shuiyin (水音), the original authors, and community contributors. Component licenses, notices, and corresponding third-party source are included with the client package. The reference example has its own license.
+The original capture utilities were created by **Shuiyin (水音)**. An archived version can be found in [backup-tool](https://github.com/inori-dream/miaomiao-launcher/tree/main/backup-tool).
+
+- [inori-dream/miaomiao-launcher](https://github.com/inori-dream/miaomiao-launcher) — client integration and archive utilities.
+- [BanterSR/Lolo](https://github.com/BanterSR/Lolo) — local service component and protocol identifiers.
+- [byzp/of-ps](https://github.com/byzp/of-ps) — protocol definitions and mappings.
+
+We also acknowledge the authors of the bundled runtime, decoding, and interface dependencies. Their notices, licenses, and corresponding component source accompany the client package. The reference example is licensed separately.

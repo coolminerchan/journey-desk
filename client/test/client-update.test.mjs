@@ -269,3 +269,16 @@ test('cancelling a backup download prevents another route and removes partial by
   assert.equal(install.count(), 0)
   assert.deepEqual(await readdir(join(root,'updates')), [])
 }))
+
+test('cancelling after extraction removes only the newly created update stage', async () => fixture(async root => {
+  let updater
+  const sentinel=join(root,'updates/version-0.5.0-owned-earlier');await mkdir(sentinel,{recursive:true});await writeFile(join(sentinel,'keep.txt'),'keep')
+  updater=new ClientUpdater({here:root,userData:root,python:()=> 'python',command:(_exe,args)=>({done:(async()=>{
+    const target=args[args.indexOf('--output')+1];await mkdir(target);await writeFile(join(target,'large-resource.bin'),'partial staged component')
+    updater.cancel()
+    return JSON.stringify({path:target,executable:join(target,'游戏启动器.exe'),version:release.version})
+  })()})},{fetcher:async url=>new Response(isFeed(url)?JSON.stringify(envelope()):data)})
+  await updater.check();await assert.rejects(updater.prepare(),/取消/)
+  assert.equal(await readFile(join(sentinel,'keep.txt'),'utf8'),'keep')
+  assert.deepEqual(await readdir(join(root,'updates')),['version-0.5.0-owned-earlier'])
+}))

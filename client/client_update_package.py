@@ -78,9 +78,22 @@ if __name__ == '__main__':
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--version', required=True)
     parser.add_argument('--sha256', required=True)
+    parser.add_argument('--base-installation', type=Path)
+    parser.add_argument('--from-version')
+    parser.add_argument('--base-manifest-sha256')
+    parser.add_argument('--target-manifest-sha256')
     args = parser.parse_args()
     try:
-        print(json.dumps(install(args.input, args.output, args.version, args.sha256)))
+        if args.base_installation:
+            # Embedded Windows Python uses a fixed ._pth and does not add the
+            # script directory automatically. Load only this bundled sibling.
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from client_update_delta import install_delta
+            result = install_delta(args.input, args.output, args.version, args.sha256,
+                args.base_installation, args.from_version, args.base_manifest_sha256, args.target_manifest_sha256)
+        else:
+            result = install(args.input, args.output, args.version, args.sha256)
+        print(json.dumps(result))
     except Exception as error:
         print(json.dumps(dict(code='invalid_update', message=str(error))), file=sys.stderr)
         raise SystemExit(1)

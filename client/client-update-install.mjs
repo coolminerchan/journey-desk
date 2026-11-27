@@ -55,7 +55,37 @@ async function requireIdleInstallation(root) {
 }
 function validFile(path) {
   return typeof path === 'string' && !/[\\:\x00-\x1f<>"|?*]/.test(path) &&
-    path.split('/').every(part => part && !['.','..'].includes(part) && !/[ .]$/.test(part)) && ROOTS.has(path.split('/')[0])
+    path.split('/').every(part => part && !['.','..'].includes(part) && !/[ .]$/.test(part) &&
+      !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i.test(part)) && ROOTS.has(path.split('/')[0])
+}
+
+// Installed roots may also contain rollback journals and personal ZIPs. Only
+// the publisher's exact inventory participates in reuse; never copy extras.
+export async function verifyBasePackage(root, version, expectedHash) {
+  const info = await product(root)
+  if (info.version !== version || await digest(join(root, MANIFEST)) !== expectedHash)
+    throw Error('Delta base inventory does not match')
+  const manifest = await readJSON(join(root, MANIFEST))
+  if (manifest.schema !== 1 || manifest.kind !== 'client_package' || manifest.version !== version ||
+      !Array.isArray(manifest.files) || manifest.files.length > 50000) throw Error('Invalid base inventory')
+  const seen = new Set(), directories = new Set([resolve(root)])
+  for (const row of manifest.files) {
+    if (!validFile(row.path) || row.path === MANIFEST || seen.has(row.path.toLowerCase()) ||
+        !Number.isSafeInteger(row.bytes) || row.bytes < 0 || row.bytes > 256 * 1024 * 1024 || !/^[a-f0-9]{64}$/.test(row.sha256))
+      throw Error('Invalid base inventory entry')
+    seen.add(row.path.toLowerCase())
+    let parent = root
+    for (const part of row.path.split('/').slice(0, -1)) {
+      parent = join(parent, part)
+      if (!directories.has(parent)) { await directory(parent); directories.add(parent) }
+    }
+    const file = join(root, row.path), metadata = await lstat(file)
+    if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.size !== row.bytes || await digest(file) !== row.sha256)
+      throw Error('Installed base file changed')
+  }
+  for (const required of [EXECUTABLE, 'runtime/node.exe', 'resources/app/main.mjs', 'resources/app/product.json'])
+    if (!seen.has(required.toLowerCase())) throw Error('Incomplete base inventory')
+  return info
 }
 async function listFiles(root, prefix = '') {
   const rows = []

@@ -19,7 +19,7 @@ Saved-home archives can be added to a local save's collection and visited using 
 
 Wait for saving to finish before closing the application. Existing archives and connection Keys remain private.
 
-Updates can be checked in Client Settings. Startup checks can be disabled there. Downloads are verified before replacing the application; close the running client session first.
+Updates can be checked in Client Settings. Startup checks can be disabled there. Supported versions prefer signed file deltas and reuse verified local files; a full package remains available when needed. Older updaters use one complete upgrade before incremental support becomes available. Close the running client session before updating.
 
 ## Reference
 

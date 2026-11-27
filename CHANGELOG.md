@@ -1,3 +1,43 @@
+# 0.12.17
+
+Windows x64 portable client. Includes all changes since 0.12.12.
+
+## Added
+
+- Activity settings for individual local saves and administrator-managed sessions. Choose one active event and one of 20 battle-pass seasons; switching back preserves the previous season's experience, counters, and reward claims.
+- Selectable plaza decorations, including Halloween, Christmas, cherry blossoms, and Ferris-wheel stages. Decorations and event tasks are configured separately. All clients connected to the same service receive the same selection.
+- Cross-channel decoration matching by asset identity rather than internal IDs, supporting the different TapTap and Bilibili resource tables.
+- An option to open all 63 historical wish-tree definitions available in the saved resources. Node prerequisites, currency costs, rewards, and unlock history remain enforced and persistent.
+- Selection of 50 historical capsule-machine instances, including Select All and Disable All controls. Draw counts, remaining rewards, and history stay separate for each instance.
+- Sign-in rewards, supported event tasks, battle-pass task experience and level rewards, local-currency experience purchases, machine draws, and paginated history.
+- Activity counters for login, production, fishing, dungeon completion, combat, chests, gathering, collection, and draws. Imports restore recorded activity and tree progress without inventing missing completion records.
+
+## Fixed
+
+- Choice-pool draws returning success without an item, selected-target pity handling, wish-selection success responses, and incomplete draw-history page counts.
+- Draw transactions now commit costs, items, counters, and records together. Insufficient balances, invalid rewards, or record-write failures preserve the previous inventory and draw state. Final inventory notifications include extra rewards.
+- Large activity catalogs being truncated by the launcher, and outdated bundled inspection components rejecting otherwise compatible TapTap installations. Packaging now checks channel and fingerprint support.
+- Tutorial suppression interrupting scene initialization, hiding the main interface, or preventing movement. Normal initialization is preserved; only the dedicated tutorial panel is closed.
+- Activity timestamps using the wrong unit, which could hide entries or close activity pages immediately.
+- Battle-pass Reward-page Claim All now collects unlocked items; Task-page Claim All collects experience from completed tasks. Previously claimed or incomplete entries are skipped.
+- Login tasks being missed when changing seasons on the same day, received task states being reset by generic progress notifications, and empty claims being misreported as a weekly experience limit. Claimed states survive re-entry.
+- Historical-tree startup hooks triggering AOT initialization errors, and invalid managed-string writes causing native crashes. Configuration changes use the client's original property setters with reference checks and preserve managed initialization order.
+- Added bounded retries for temporary dispatch failures and local startup diagnostics.
+
+## Updating
+
+Close the game and allow saving to finish before updating. Existing local saves and working connection Keys can be reused.
+
+For manual installation, download and fully extract **Journey-Desk-0.12.17-Windows-x64.zip**, then run **游戏启动器.exe**. Keep `runtime`, `resources`, and `licenses` beside the executable.
+
+The built-in updater can use signed deltas from **0.12.12** and **0.12.15**. Delta ZIPs are updater inputs, not manual overlay patches. Other versions can use the complete package.
+
+Online administrators must update the corresponding service component and save their activity selections. After changing plaza decorations or wish-tree availability, players must fully exit and restart the game through the launcher; returning to the title screen alone is insufficient. Local settings apply only to the selected save.
+
+Activities requiring top-ups, paid event bundles, invitations, or returning-player recruitment remain disabled. Bundled component licenses and corresponding source are included. The repository's small server example remains reference code; only the client download is needed for local use.
+
+---
+
 # 0.12.12
 
 Windows x64 便携客户端 · 测试版。本次合并 0.12.7 之后的全部更新。

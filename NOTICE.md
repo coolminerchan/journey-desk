@@ -4,6 +4,6 @@ The Windows release includes third-party runtime and interface components. Their
 
 The small server example under `reference/server` is independent reference code under its own MIT license. It does not include application-specific data, account storage, session handling, or the complete backend used by configured sessions.
 
-This repository's `client/update` directory contains the client application update implementation. It is not a complete client source distribution. The client archive includes the applicable third-party source and notices for its components.
+This repository's `client` directory contains the client application update implementation. It is not a complete client source distribution. The client archive includes the applicable third-party source and notices for its components.
 
 Artwork and third-party component names remain the property of their respective authors. This project does not claim authorship of them.

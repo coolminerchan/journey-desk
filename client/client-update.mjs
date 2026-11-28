@@ -1,7 +1,7 @@
 import { createHash, randomUUID, verify } from 'node:crypto'
-import { lstat, mkdir, open, readFile, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, open, readFile, rename, rm, unlink } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
-import { startApply, verifyBasePackage } from './client-update-install.mjs'
+import { atomicJSON, canonicalDirectory, inside, startApply, verifyBasePackage } from './client-update-install.mjs'
 
 const VERSION = /^\d{1,5}\.\d{1,5}\.\d{1,5}$/
 const SOURCES = [
@@ -161,7 +161,7 @@ export class ClientUpdater {
     const { version } = await this.config()
     const delta = release.deltas?.find(part => part.from_version === version && part.bytes < release.bytes)
     if (delta) {
-      const base = resolve(this.ctx.here, '../..')
+      const base = resolve(await canonicalDirectory(this.ctx.here), '../..')
       this.set({ phase: 'verifying', hint: '正在核对本机文件，未改动的文件将直接复用。', fallback: false })
       try {
         await verifyBasePackage(base, version, delta.base_manifest_sha256)
@@ -176,16 +176,40 @@ export class ClientUpdater {
     return this.prepareArtifact(release)
   }) }
   async prepareArtifact(release, delta = null) {
-    await mkdir(this.root, { recursive: true })
-    const file = join(this.root, `client-${release.version}-${randomUUID()}.zip`), pending = file + '.part'
+    const installation = resolve(await canonicalDirectory(this.ctx.here), '../..')
+    const updates = join(await canonicalDirectory(this.ctx.userData), 'updates')
+    const staging = await canonicalDirectory(updates, { allowMissing:true })
+    if (staging === installation || inside(installation, staging) || inside(staging, installation))
+      throw Error('Update staging overlaps the installation')
+    await mkdir(updates, { recursive: true })
+    const root = await canonicalDirectory(updates)
+    const owner = await lstat(root, { bigint:true })
+    const sameFile = (a, b) => a.dev === b.dev && a.ino === b.ino
+    const requireRoot = async () => {
+      if (await canonicalDirectory(root) !== root || !sameFile(await lstat(root, { bigint:true }), owner))
+        throw Error('Update download directory changed')
+    }
+    const ownedDownload = async (path, identity) => {
+      if (!identity || dirname(path) !== root) return false
+      await requireRoot()
+      const entry = await lstat(path, { bigint:true })
+      return entry.isFile() && !entry.isSymbolicLink() && sameFile(entry, identity)
+    }
+    const removeDownload = async (path, identity) => {
+      try { if (await ownedDownload(path, identity)) await unlink(path) }
+      catch { /* Missing, replaced or redirected downloads are retained. */ }
+    }
+    const file = join(root, `client-${release.version}-${randomUUID()}.zip`), pending = file + '.part'
     this.set({ phase: 'downloading', progress: 0, error: '', updateKind: delta ? 'delta' : 'full', downloadBytes: release.bytes })
-    let handle, target, prepared = false
+    let handle, target, pendingOwner, fileOwner, prepared = false
     try {
       let downloaded = false, lastError
       for (const [attempt, source] of this.sources(this.releaseSource).entries()) {
         this.route(source, attempt); this.set({ progress: 0 })
         try {
+          await requireRoot()
           handle = await open(pending, 'wx')
+          pendingOwner = await handle.stat({ bigint:true })
           const hash = createHash('sha256')
           const found = await request(release.url, source, release.bytes, async (chunk, bytes) => {
             await handle.writeFile(chunk); hash.update(chunk)
@@ -197,41 +221,47 @@ export class ClientUpdater {
           downloaded = true; break
         } catch (error) {
           await handle?.close().catch(() => {}); handle = null
-          await unlink(pending).catch(() => {})
+          await removeDownload(pending, pendingOwner)
           if (this.abort.signal.aborted) throw error
           lastError = error
         }
       }
       if (!downloaded) throw lastError
+      if (!await ownedDownload(pending, pendingOwner)) throw Error('Update download file changed')
+      if (await lstat(file).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error }))
+        throw Error('Update download destination already exists')
       await rename(pending, file)
+      fileOwner = pendingOwner; pendingOwner = null
       this.set({ phase: 'verifying' })
-      target = join(this.root, `version-${release.version}-${randomUUID()}`)
+      target = join(root, `version-${release.version}-${randomUUID()}`)
       const args = ['-B', '-X', 'utf8', join(this.ctx.here, 'client_update_package.py'), '--input', file,
         '--output', target, '--version', release.version, '--sha256', release.sha256]
       if (delta) args.push('--base-installation', delta.base, '--from-version', delta.from_version,
         '--base-manifest-sha256', delta.base_manifest_sha256, '--target-manifest-sha256', delta.target_manifest_sha256)
       if (this.abort.signal.aborted) throw Error('更新已取消')
       const installed = JSON.parse(await this.ctx.command(this.ctx.python(), args, { persistent: true }).done)
+      await requireRoot()
       if (this.abort.signal.aborted) throw Error('更新已取消')
       if (!installed.executable || installed.version !== release.version || installed.path !== target || (delta && installed.kind !== 'delta')) throw new Error('更新包安装验证失败')
-      await writeFile(join(this.root, 'prepared.json'), JSON.stringify({ version: release.version, path: target, sha256: release.sha256 }))
+      await atomicJSON(join(root, 'prepared.json'), { version: release.version, path: target, sha256: release.sha256 })
       this.installed = installed
       prepared = true
       this.set({ phase: 'ready', hint: '新版本已验证。点击更新后将关闭窗口并替换当前目录的程序，原有入口和快捷方式继续使用。' })
       return true
     } finally {
       await handle?.close().catch(() => {})
-      await unlink(pending).catch(() => {})
-      await unlink(file).catch(() => {})
+      await removeDownload(pending, pendingOwner)
+      await removeDownload(file, fileOwner)
       // Only this attempt's uniquely named, unredirected stage is disposable.
       // Earlier prepared versions and the installed application remain intact.
       if (target && !prepared) {
-        const path = resolve(target), root = await realpath(this.root)
-        if (dirname(path).toLowerCase() === root.toLowerCase() && /^version-\d+\.\d+\.\d+-[a-f0-9-]{36}$/.test(basename(path))) {
-          const entry = await lstat(path).catch(() => null)
-          if (entry?.isDirectory() && !entry.isSymbolicLink() && (await realpath(path)).toLowerCase() === path.toLowerCase())
-            await rm(path, { recursive: true, force: true, maxRetries: 3 })
-        }
+        try {
+          const owner = await canonicalDirectory(root)
+          if (dirname(target) === owner && /^version-\d+\.\d+\.\d+-[a-f0-9-]{36}$/.test(basename(target))) {
+            const path = await canonicalDirectory(target)
+            if (dirname(path) === owner) await rm(path, { recursive: true, force: true, maxRetries: 3 })
+          }
+        } catch { /* Missing or redirected stages are not cleanup candidates. */ }
       }
     }
   }

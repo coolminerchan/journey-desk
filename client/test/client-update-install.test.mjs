@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { copyFile, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { apply, atomicJSON, cleanupHelpers, createManifest, EXECUTABLE, inside, JOURNAL, legacyOrigin, makePlan, MANIFEST, product, rollback, verifyPackage } from '../client-update-install.mjs'
@@ -34,7 +34,7 @@ test('in-place replacement keeps the exact entry, unrelated root files and previ
       assert.equal(await readFile(join(plan.backup,EXECUTABLE),'utf8'),'host-0.7.1')
     }
   }})
-  assert.equal(result.executable,join(target,EXECUTABLE))
+  assert.equal(result.executable,join(await realpath(target),EXECUTABLE))
   assert.equal((await product(target)).version,'0.7.2')
   assert.equal(await readFile(join(target,'my-account.zip'),'utf8'),'user-backup')
   assert.equal(await readFile(join(result.backup,EXECUTABLE),'utf8'),'host-0.7.1')
@@ -42,7 +42,7 @@ test('in-place replacement keeps the exact entry, unrelated root files and previ
   assert.ok(!(await readdir(join(target,'resources/app'))).includes('stale.js'))
 }))
 test('replacement failures restore every moved component without removing unrelated files',async()=>{
-  for(const failAt of [EXECUTABLE,'resources',MANIFEST])await fixture(async({target,source,helper})=>{
+  for(const failAt of [EXECUTABLE,'runtime','resources',MANIFEST])await fixture(async({target,source,helper})=>{
     await writeFile(join(target,'notes.txt'),'keep')
     const plan=await makePlan(target,source,helper,'0.7.2')
     await assert.rejects(apply(plan,{beforeReplace:name=>{if(name===failAt)throw Error('Injected replacement failure')}}),/Injected/)
@@ -119,7 +119,7 @@ test('legacy migration requires the matching update cache record and client orig
   await bundle(source,'0.7.2')
   await atomicJSON(join(userData,'updates/prepared.json'),{path:source,version:'0.7.2'})
   const input={here:join(source,'resources/app'),userData,origin:target}
-  assert.equal((await legacyOrigin(input)).target,target)
+  assert.equal((await legacyOrigin(input)).target,await realpath(target))
   assert.equal(await legacyOrigin({...input,origin:source}),null)
   assert.equal(await legacyOrigin({...input,origin:root}),null)
   await atomicJSON(join(userData,'updates/prepared.json'),{path:join(root,'other'),version:'0.7.2'})

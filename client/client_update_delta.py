@@ -81,14 +81,36 @@ def verify_file(path, row):
         raise ValueError('Installed base or reconstructed file changed: ' + row['path'])
 
 
+def canonical_directory(path):
+    path = Path(path)
+    if '..' in path.parts:
+        raise ValueError('Update directory cannot contain parent traversal')
+    path = path.absolute()
+    for current in (path, *path.parents):
+        metadata = current.lstat()
+        if (not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode)
+                or getattr(metadata, 'st_file_attributes', 0) & 0x400):
+            raise ValueError('Redirected update directory')
+    return path.resolve(strict=True)
+
+
 def install_delta(source, output, version, expected_hash, base, from_version, base_hash, target_hash):
     if (not all(isinstance(v, str) and VERSION.fullmatch(v) for v in (version, from_version))
             or not all(isinstance(v, str) and HASH.fullmatch(v) for v in (expected_hash, base_hash, target_hash))):
         raise ValueError('Invalid delta release metadata')
-    base, output = Path(base).absolute(), Path(output).absolute()
-    if (base.resolve() != base or not base.is_dir() or output.exists() or output.is_symlink()
-            or not output.parent.is_dir() or output.resolve().is_relative_to(base.resolve())
-            or base.resolve().is_relative_to(output.resolve())):
+    base = canonical_directory(base)
+    output = Path(output)
+    if '..' in output.parts:
+        raise ValueError('Delta staging cannot contain parent traversal')
+    output = output.absolute()
+    try:
+        output.lstat()
+    except FileNotFoundError:
+        pass
+    else:
+        raise ValueError('Delta staging requires a new directory')
+    output = canonical_directory(output.parent) / output.name
+    if output.is_relative_to(base) or base.is_relative_to(output):
         raise ValueError('Delta staging requires separate, unredirected directories')
     if digest(source) != expected_hash:
         raise ValueError('Delta archive digest mismatch')

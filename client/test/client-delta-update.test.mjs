@@ -102,7 +102,7 @@ test('in-place delta replacement failure rolls back and preserves personal data'
   assert.equal(await readFile(join(f.settings,'save.json'),'utf8'),'private save sentinel')
 }))
 
-test('cancelling a delta download does not start a full fallback',async()=>fixture(async f=>{
+test('cancelling a delta download does not start a full fallback',{timeout:10000},async()=>fixture(async f=>{
   let started;const ready=new Promise(ok=>{started=ok})
   const updater=new ClientUpdater(f.context,{fetcher:async(url,options)=>{
     if(!url.pathname.includes('Delta-'))return f.fetcher(url)

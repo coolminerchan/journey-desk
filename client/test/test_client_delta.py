@@ -1,7 +1,9 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -10,7 +12,7 @@ from zipfile import ZipFile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'client'))
 sys.path.insert(0, str(ROOT / 'scripts'))
-from client_update_delta import REQUIRED, digest, install_delta, manifest
+from client_update_delta import REQUIRED, canonical_directory, digest, install_delta, manifest
 from build_client_delta import build
 
 
@@ -149,6 +151,56 @@ class ClientDeltaTests(unittest.TestCase):
             self.skipTest('Windows symlink permission unavailable')
         with self.assertRaises(ValueError):
             self.install()
+        self.assertFalse(self.output.exists())
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows aliases required')
+    def test_real_short_alias_case_and_unicode_output_return_a_canonical_path(self):
+        import ctypes
+        # The E: test volume has no 8.3 aliases. Keep process TEMP unchanged,
+        # and exercise real aliases in an explicitly supplied capable directory.
+        with tempfile.TemporaryDirectory(dir=os.environ.get('OVERFIELD_TEST_ALIAS_TEMP')) as directory:
+            root = Path(directory)
+            shutil.copytree(self.base, root / 'installed')
+            buffer = ctypes.create_unicode_buffer(32768)
+            count = ctypes.windll.kernel32.GetShortPathNameW(ctypes.c_wchar_p(str(root)), buffer, len(buffer))
+            self.assertGreater(count, 0)
+            self.assertLess(count, len(buffer))
+            short = Path(buffer.value)
+            self.assertNotEqual(str(short).casefold(), str(root.resolve()).casefold())
+            self.assertEqual(short.resolve(), root.resolve())
+            output = short / 'staged 中文 space'
+            result = self.install(base=str(short / 'installed').upper(), output=output)
+            self.assertEqual(result['path'], str(root.resolve() / output.name))
+            self.assertEqual(result['executable'], str(root.resolve() / output.name / '游戏启动器.exe'))
+            self.assertEqual((Path(result['path']) / 'resources/app/main.mjs').read_text(), 'changed-0.12.10')
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows links required')
+    def test_real_symlinks_and_junctions_at_leaf_or_ancestor_are_rejected_without_changing_base(self):
+        before = (self.base / 'runtime/node.exe').read_bytes()
+        for kind in ('symlink', 'junction'):
+            leaf, parent = self.root / ('leaf-' + kind), self.root / ('parent-' + kind)
+            for link, target in ((leaf, self.base), (parent, self.root)):
+                if kind == 'symlink':
+                    link.symlink_to(target, target_is_directory=True)
+                else:
+                    subprocess.run(['cmd.exe', '/d', '/c', 'mklink', '/J', str(link), str(target)],
+                                   check=True, capture_output=True)
+            for base in (leaf, parent / 'installed', str(leaf) + os.sep + '..' + os.sep + 'installed'):
+                with self.subTest(kind=kind, base=str(base)), self.assertRaises(ValueError):
+                    self.install(base=base)
+            with self.assertRaises(ValueError):
+                self.install(output=parent / 'staged')
+            with self.assertRaises(ValueError):
+                canonical_directory(leaf)
+            self.assertFalse(self.output.exists())
+            self.assertEqual((self.base / 'runtime/node.exe').read_bytes(), before)
+
+    def test_output_parent_traversal_is_rejected_before_normalization(self):
+        intermediate = self.root / 'ordinary-dir'
+        intermediate.mkdir()
+        output = str(intermediate) + os.sep + '..' + os.sep + 'staged'
+        with self.assertRaises(ValueError):
+            self.install(output=output)
         self.assertFalse(self.output.exists())
 
 

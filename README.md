@@ -1,3 +1,11 @@
+# 当服务器即将熄灭，愿这片小小世界永远留在你的硬盘里
+“空间要关服了。”
+
+“嗯，我知道。”
+
+“那还能玩吗？”
+
+“能。我把它带回家了。”
 # journey-desk
 
 A desktop companion for local archives and configured client sessions.

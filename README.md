@@ -29,6 +29,12 @@ Wait for saving to finish before closing the application. Existing archives and 
 
 Updates can be checked in Client Settings. Startup checks can be disabled there. Supported versions prefer signed file deltas and reuse verified local files; a full package remains available when needed. Older updaters use one complete upgrade before incremental support becomes available. Close the running client session before updating.
 
+## Invited online playtest
+
+Online access is by invitation to the administrator's private server. Each player imports their own privately issued connection Key; no server deployment or shared account credential is distributed here. The current online test uses the verified TapTap program/resource combination documented in the client guide. Bilibili single-player support remains available; online version compatibility is checked separately.
+
+Single-player play remains included, together with its local engine, corresponding source and dependency licenses. Shared-channel scene histories without consistent account ownership are retained as raw archive evidence, rather than promoted to personal completion states.
+
 ## Reference
 
 `reference/server` contains a small static-resource server example. It is for reference and is not a complete session or application backend. It is not required for local use.

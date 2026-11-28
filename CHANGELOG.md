@@ -1,28 +1,34 @@
-# 0.12.18 — invited playtest
+# 0.12.18
 
-- Restore nebula-tree pages, activated nodes, achievement counters, page rewards and claimed task rewards from account archives. Nebula trees and historical wish trees remain separate systems. Existing claims are restored without granting their rewards again.
-- Preserve global collection IDs and verified personal challenge times independently of temporary scene snapshots. Unknown moon regions remain unassigned.
-- Restore scenic, timed-challenge and world-riddle states only from scene snapshots whose original player ID and visible UID both match the captured account. Shared or unverified channel histories remain in the original archive and are reported as not restored; matching personal times do not establish ownership of unrelated completion states or stars. Existing saved progress is preserved.
-- Support history-only supplements for an existing save of the same identity. The operation checks the archive digest, requires the game and local service to be stopped, and creates a backup before changing history. Equipment, balances, life progress, activities and home layouts remain intact.
-- Reject isolated-game resource paths that exceed the supported managed-file path length, and detect missing cache manifests before launching. Real resource manifests are required; no replacement versions are synthesized.
-- Keep imported friends usable in private conversations when both restored accounts have confirmed friendship evidence. Private sending and history use the same checks, including deletion and blacklist state, without creating accounts or inventing reciprocal friend entries.
-- Correct updater path handling for Windows short names and canonical paths while retaining signature, member, link, overlap, cleanup, locking and rollback protections. Full-package installation remains available alongside verified file deltas.
+Windows x64 portable client.
 
-## Scope
+## Added
 
-This client keeps single-player play and joins the administrator's private server by invitation. Each invited player receives their own connection Key privately. No independent server management tool, server deployment package, player archive, database or shared account credential is included.
+- Restore nebula-tree pages, activated nodes, achievement counters and reward-claim records from account archives. Restored claims do not grant the same rewards again.
+- Add history-only imports for an existing account, including verified exploration records, global collection IDs and personal challenge times. Imports create a backup and preserve equipment, balances, life progress, activities and home layouts.
 
-The invited online playtest currently uses TapTap program `2026-10-21-14-05-50` with resource `2026-11-25-19-54-41`. Verified Bilibili single-player use remains available. Online Keys must match the actual installed channel and resource version; the current test server's older Bilibili resource profile does not establish support for newer Bilibili online installations. Version checks remain enabled.
+## Fixed
 
-The tested online scope covers two distinct accounts, movement and jumping, channel messages, existing-friend private messages, home round trips, and saved identity/signature after re-entry. Prior short-connection-interruption evidence is reused; this release does not claim a new disconnect test or uninterrupted survival across server restarts. Special activities and local gameplay algorithms retain the limitations described in the client guide.
+- Prevent shared or unverified scene records from being restored as personal exploration history. Unverified records remain in the original archive and are identified in the import preview. Verified personal challenge times are restored separately.
+- Restore private messaging between imported accounts with confirmed mutual friendship. Sending and message-history queries now apply consistent friendship, deletion and blacklist checks.
+- Detect unsupported game-cache path lengths and missing resource manifests before launch, with clear guidance for correcting the installation path.
+- Improve Windows updater handling of short and canonical paths. Signed full-package and delta updates retain file verification, in-place replacement, backups and failure rollback.
 
-## Installation and existing data
+## Updating
 
-Fully extract the complete client package and keep `runtime`, `resources` and `licenses` beside `游戏启动器.exe`. Select your own original game installation. Close the running game and wait for saving before applying an update. Delta ZIPs are updater inputs, not standalone installations.
+Close the game and wait for saving to finish before updating. Existing local saves, account archives and working connection Keys can be reused.
 
-Existing archives and working connection Keys remain private and can be reused. To supplement a save, preview an archive for the same UID and select the history-only action. An omitted or unverified record does not mean that the original account had zero progress. No automatic cleanup of previously saved history is performed.
+For manual installation, download and fully extract **Journey-Desk-0.12.18-Windows-x64.zip**, then run **游戏启动器.exe**. Keep `runtime`, `resources` and `licenses` beside the executable.
 
-The local single-player engine, its complete corresponding source and dependency licenses accompany the client. Thanks to the original authors, Shuiyin (水音), and the community contributors acknowledged in the bundled notices.
+The built-in updater supports a signed delta from **0.12.17**. Delta ZIPs are updater inputs, not manual overlay patches. Other compatible versions can use the complete package.
+
+## Compatibility
+
+Single-player support remains available for verified TapTap and Bilibili builds. Online connections require a Key matching the installed channel, program version and resource version. Confirm the supported combination with your server administrator; version checks remain enabled.
+
+Gameplay support and existing limitations are described in the client guide. Third-party licenses, notices and the local engine's corresponding source are included in the package.
+
+Thanks to the original authors, Shuiyin (水音), and the community contributors.
 
 ---
 

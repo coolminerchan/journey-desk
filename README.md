@@ -6,6 +6,7 @@
 “那还能玩吗？”
 
 “能。我把它带回家了。”
+
 # journey-desk
 
 A desktop companion for local archives and configured client sessions.
@@ -44,6 +45,7 @@ Single-player play remains included, together with its local engine, correspondi
 Include the application version, Windows build, client channel, reproduction steps, and error text. Keep archives, connection Keys, and raw recordings private.
 
 ## Credits
+十分感谢**雪蓉水儿**、**来块薄荷塘**对本项目的测试！
 
 The original capture utilities were created by **Shuiyin (水音)**. An archived version can be found in [backup-tool](https://github.com/inori-dream/miaomiao-launcher/tree/main/backup-tool).
 
